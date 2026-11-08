@@ -70,7 +70,7 @@ python update_ip_sets.py [--version {4,6,all}] [--source {url,file}]
 | `--version` | `all` | Sync only IPv4 (`4`), only IPv6 (`6`) or both |
 | `--source` | `url` | `url` downloads the lists from FortiWeb; `file` uses the `.txt` files in this repo |
 | `--scope` | `REGIONAL` | `CLOUDFRONT` creates global IP sets (always in `us-east-1`) |
-| `--region` | profile default | AWS region for `REGIONAL` IP sets |
+| `--region` | `AWS_REGION` / profile default | AWS region for `REGIONAL` IP sets |
 | `--name-ipv4` | `FortiWeb-IPv4` | Name of the IPv4 IP set |
 | `--name-ipv6` | `FortiWeb-IPv6` | Name of the IPv6 IP set |
 | `--dry-run` | off | Show what would change without touching AWS |
