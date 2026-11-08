@@ -11,8 +11,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - name: Check that the tag matches __version__
         run: |
           version=$(sed -n "s/^__version__ = '\(.*\)'$/\1/p" aws_fortiweb.py)
@@ -29,8 +29,10 @@ jobs:
           name: dist
           path: dist/
 
+  # Opt-in: set the repository variable PUBLISH_TO_PYPI=true once the PyPI trusted publisher is configured
   pypi:
     needs: build
+    if: vars.PUBLISH_TO_PYPI == 'true'
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -42,11 +44,11 @@ jobs:
         with:
           name: dist
           path: dist/
-      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uv publish --trusted-publishing always
 
   github-release:
-    needs: pypi
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -59,3 +61,15 @@ jobs:
         run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
+
+  # Installs the release exactly as documented in the README, with plain pip
+  verify-release:
+    needs: github-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: pip install from the release URL
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          python3 -m venv /tmp/server
+          /tmp/server/bin/pip install "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/aws_fortiweb-${version}-py3-none-any.whl"
+          /tmp/server/bin/aws-fortiweb --help

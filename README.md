@@ -35,14 +35,21 @@ The fix is to accept traffic only from FortiWeb's IP addresses. FortiWeb publish
 
 ## Installation
 
-Pick whatever fits your environment. All options give you the same `aws-fortiweb` command.
+Every release on [GitHub Releases](https://github.com/guilhermevini/aws-fortiweb/releases) ships a wheel that pip can install straight from its URL. All options give you the same `aws-fortiweb` command.
+
+**Server with Python and pip** (no git, no uv, no build step):
+
+```bash
+python3 -m pip install https://github.com/guilhermevini/aws-fortiweb/releases/download/v1.0.0/aws_fortiweb-1.0.0-py3-none-any.whl
+```
+
+Replace `1.0.0` with the [latest release](https://github.com/guilhermevini/aws-fortiweb/releases/latest). Other options:
 
 | Environment | Install | Run |
 | --- | --- | --- |
-| Server with Python and pip | `python3 -m pip install aws-fortiweb` | `aws-fortiweb` |
-| Isolated CLI tool | `pipx install aws-fortiweb` | `aws-fortiweb` |
-| [uv](https://docs.astral.sh/uv/) users (no install) | — | `uvx aws-fortiweb` |
-| No access to PyPI | download the `.whl` from [Releases](https://github.com/guilhermevini/aws-fortiweb/releases), then `pip install aws_fortiweb-*.whl` | `aws-fortiweb` |
+| Isolated CLI tool | `pipx install <wheel URL above>` | `aws-fortiweb` |
+| [uv](https://docs.astral.sh/uv/) users (no install) | — | `uvx --from git+https://github.com/guilhermevini/aws-fortiweb@v1.0.0 aws-fortiweb` |
+| No internet on the server | download the `.whl` elsewhere, copy it, then `pip install aws_fortiweb-*.whl` | `aws-fortiweb` |
 | Single file, nothing else | `pip install boto3` (or `-r requirements.txt`) and copy [`aws_fortiweb.py`](aws_fortiweb.py) | `python3 aws_fortiweb.py` |
 
 `python3 -m aws_fortiweb` also works whenever the package is installed (useful when `~/.local/bin` is not on your `PATH` after a `pip install --user`).
@@ -52,7 +59,7 @@ Pick whatever fits your environment. All options give you the same `aws-fortiweb
 ## Quick start
 
 ```bash
-python3 -m pip install aws-fortiweb
+python3 -m pip install https://github.com/guilhermevini/aws-fortiweb/releases/download/v1.0.0/aws_fortiweb-1.0.0-py3-none-any.whl
 
 export AWS_PROFILE=my-profile
 export AWS_REGION=us-east-1
@@ -221,7 +228,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::123456789012:role/fortiweb-ipset-sync
           aws-region: us-east-1
-      - run: pip install aws-fortiweb
+      - run: pip install https://github.com/guilhermevini/aws-fortiweb/releases/download/v1.0.0/aws_fortiweb-1.0.0-py3-none-any.whl
       - run: aws-fortiweb
 ```
 
@@ -274,10 +281,12 @@ Issues and pull requests are welcome. Please make sure `uv run pytest`, `uv run 
 
 ## Releasing
 
-1. Bump `__version__` in [`aws_fortiweb.py`](aws_fortiweb.py) and merge to `main`.
+1. Bump `__version__` in [`aws_fortiweb.py`](aws_fortiweb.py), update the version in the install URLs of this README, and merge to `main`.
 2. Tag and push: `git tag v1.2.3 && git push origin v1.2.3`.
 
-The [Release workflow](.github/workflows/release.yml) checks that the tag matches `__version__`, runs the tests, publishes to PyPI via [trusted publishing](https://docs.pypi.org/trusted-publishers/) (no API token stored in GitHub) and creates a GitHub release with the wheel attached.
+The [Release workflow](.github/workflows/release.yml) checks that the tag matches `__version__`, runs the tests, builds the sdist and wheel and creates a GitHub release with both attached.
+
+Publishing to PyPI is opt-in: configure a [trusted publisher](https://docs.pypi.org/trusted-publishers/) on PyPI (workflow `release.yml`, environment `pypi`) and set the repository variable `PUBLISH_TO_PYPI=true`. No API token is stored in GitHub.
 
 ## Disclaimer
 
