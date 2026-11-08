@@ -1,6 +1,9 @@
 # aws-fortiweb
 
+[![CI](https://github.com/guilhermevini/aws-fortiweb/actions/workflows/ci.yml/badge.svg)](https://github.com/guilhermevini/aws-fortiweb/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Update FortiWeb IPs](https://github.com/guilhermevini/aws-fortiweb/actions/workflows/update-ips.yml/badge.svg)](https://github.com/guilhermevini/aws-fortiweb/actions/workflows/update-ips.yml)
 
 Keep **AWS WAFv2 IP sets** in sync with the public IP ranges of **[FortiWeb Cloud](https://www.fortiweb-cloud.com)**, so that only FortiWeb can reach your AWS origin.
@@ -35,14 +38,15 @@ The fix is to accept traffic only from FortiWeb's IP addresses. FortiWeb publish
 ```bash
 git clone https://github.com/guilhermevini/aws-fortiweb.git
 cd aws-fortiweb
-pip install -r requirements.txt
 
 export AWS_PROFILE=my-profile
 export AWS_REGION=us-east-1
 
-python update_ip_sets.py --dry-run   # preview
-python update_ip_sets.py             # apply
+uv run update_ip_sets.py --dry-run   # preview
+uv run update_ip_sets.py             # apply
 ```
+
+With [uv](https://docs.astral.sh/uv/), dependencies are installed automatically on the first run. Prefer pip? Use `pip install -r requirements.txt` and then `python update_ip_sets.py`.
 
 Example output:
 
@@ -210,9 +214,23 @@ The [`Update FortiWeb IPs`](.github/workflows/update-ips.yml) workflow runs ever
 
 You can also use these files as a source for other tools (security groups, firewalls, Terraform `aws_wafv2_ip_set`, etc.), or sync from them with `python update_ip_sets.py --source file`.
 
+## Development
+
+The project uses [uv](https://docs.astral.sh/uv/) for dependencies, [Ruff](https://docs.astral.sh/ruff/) for linting and formatting, [ty](https://docs.astral.sh/ty/) for type checking and [pytest](https://docs.pytest.org/) for tests. AWS calls are mocked with `botocore.Stubber`, so tests need no credentials.
+
+```bash
+uv sync                    # create .venv with runtime + dev dependencies
+uv run pytest              # tests
+uv run ruff check .        # lint
+uv run ruff format .       # format
+uv run ty check            # type check
+```
+
+The [CI workflow](.github/workflows/ci.yml) runs all of the above (plus ShellCheck on `download_ips.sh`) on every push and pull request, testing Python 3.10 to 3.14. Dependabot keeps GitHub Actions and Python dependencies up to date.
+
 ## Contributing
 
-Issues and pull requests are welcome. Ideas for contributions:
+Issues and pull requests are welcome. Please make sure `uv run pytest`, `uv run ruff check .` and `uv run ty check` pass. Ideas for contributions:
 
 - Terraform / CloudFormation / CDK examples
 - An AWS Lambda + EventBridge deployment
