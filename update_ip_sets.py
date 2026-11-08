@@ -128,8 +128,12 @@ def sync_ip_set(client, name, scope, version, ips, dry_run):
 def main():
     parser = argparse.ArgumentParser(description='Sync FortiWeb Cloud IP ranges into AWS WAFv2 IP sets.')
     parser.add_argument('--version', choices=['4', '6', 'all'], default='all', help='IP version (default: all)')
-    parser.add_argument('--source', choices=['url', 'file'], default='url',
-                        help='download from FortiWeb (url) or use the local files (file). Default: url')
+    parser.add_argument(
+        '--source',
+        choices=['url', 'file'],
+        default='url',
+        help='download from FortiWeb (url) or use the local files (file). Default: url',
+    )
     parser.add_argument('--scope', choices=['REGIONAL', 'CLOUDFRONT'], default='REGIONAL')
     parser.add_argument('--region', help='AWS region (ignored with --scope CLOUDFRONT, which requires us-east-1)')
     parser.add_argument('--name-ipv4', default='FortiWeb-IPv4', help='IPv4 IP set name')
@@ -144,17 +148,16 @@ def main():
     try:
         client = boto3.client('wafv2', region_name=region)
     except NoRegionError:
-        print('Error: no AWS region configured. Use --region, set AWS_REGION, or configure one in your profile.',
-              file=sys.stderr)
+        print(
+            'Error: no AWS region configured. Use --region, set AWS_REGION, or configure one in your profile.',
+            file=sys.stderr,
+        )
         return 1
 
     failures = 0
     for version in versions:
         try:
-            if args.source == 'url':
-                text = download_list(version)
-            else:
-                text = LOCAL_FILES[version].read_text()
+            text = download_list(version) if args.source == 'url' else LOCAL_FILES[version].read_text()
             ips = normalize_ips(text, version)
             sync_ip_set(client, names[version], args.scope, version, ips, args.dry_run)
         except (ValueError, OSError, ClientError, BotoCoreError) as e:
