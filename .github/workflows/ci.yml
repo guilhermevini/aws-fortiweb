@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+  workflow_dispatch:  # used by update-ips.yml, whose pull requests do not trigger CI on their own
 
 permissions:
   contents: read
@@ -28,6 +29,8 @@ jobs:
         run: uv run --locked ty check
       - name: ShellCheck
         run: shellcheck download_ips.sh
+      - name: actionlint
+        run: uvx --from actionlint-py actionlint
 
   test:
     runs-on: ubuntu-latest
