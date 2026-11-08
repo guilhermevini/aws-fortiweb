@@ -1,11 +1,13 @@
 import sys
+from pathlib import Path
 
 import boto3
 import pytest
 from botocore.stub import ANY, Stubber
 
-import update_ip_sets as m
+import aws_fortiweb as m
 
+ROOT = Path(__file__).resolve().parent.parent
 ARN = 'arn:aws:wafv2:us-east-1:123456789012:regional/ipset/x/x'
 
 
@@ -66,7 +68,7 @@ def test_normalize_rejects_lists_over_waf_limit(monkeypatch):
 
 @pytest.mark.parametrize('version', [4, 6])
 def test_bundled_lists_are_valid(version):
-    assert m.normalize_ips(m.LOCAL_FILES[version].read_text(), version)
+    assert m.normalize_ips(m.default_local_file(version).read_text(), version)
 
 
 # find_ip_set
@@ -186,6 +188,30 @@ def test_main_without_region_fails_cleanly(monkeypatch, capsys):
     for var in ('AWS_REGION', 'AWS_DEFAULT_REGION', 'AWS_PROFILE', 'AWS_CONFIG_FILE'):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv('AWS_CONFIG_FILE', '/nonexistent')
-    monkeypatch.setattr(sys, 'argv', ['update_ip_sets.py', '--dry-run'])
-    assert m.main() == 1
+    assert m.main(['--dry-run']) == 1
     assert 'no AWS region configured' in capsys.readouterr().err
+
+
+def test_main_reads_custom_files(monkeypatch, tmp_path, capsys):
+    ipv4_file = tmp_path / 'v4.txt'
+    ipv4_file.write_text('1.1.1.1/32\n')
+    synced = []
+    monkeypatch.setattr(m, 'sync_ip_set', lambda client, name, scope, version, ips, dry_run: synced.append(ips))
+    args = ['--version', '4', '--source', 'file', '--ipv4-file', str(ipv4_file), '--region', 'us-east-1']
+    assert m.main(args) == 0
+    assert synced == [['1.1.1.1/32']]
+
+
+def test_main_reports_missing_file(tmp_path, capsys):
+    args = ['--version', '6', '--source', 'file', '--ipv6-file', str(tmp_path / 'missing.txt'), '--region', 'us-east-1']
+    assert m.main(args) == 1
+    assert '[IPv6] Error' in capsys.readouterr().err
+
+
+def test_legacy_entry_point_still_works():
+    import subprocess
+
+    result = subprocess.run(
+        [sys.executable, 'update_ip_sets.py', '--help'], cwd=ROOT, capture_output=True, text=True, check=True
+    )
+    assert 'aws-fortiweb' in result.stdout
