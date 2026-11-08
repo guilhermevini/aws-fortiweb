@@ -1,0 +1,6 @@
+region       = "us-east-1"
+web_acl_name = "fortiweb-only"
+
+resource_arns = [
+  "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-alb/abc123",
+]
