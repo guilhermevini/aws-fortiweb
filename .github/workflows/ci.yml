@@ -51,13 +51,13 @@ jobs:
       - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
       - name: Build sdist and wheel
         run: uv build
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.9'
-      # Simulates a server that only has Python and pip (no uv)
+      # setup-python has no 3.9 build for the latest Ubuntu, so let uv provide the interpreter
+      - name: Install Python 3.9
+        run: uv python install 3.9
+      # Simulates a server that only has Python and pip: uv is not used from here on
       - name: Install with plain pip and smoke test
         run: |
-          python -m venv /tmp/server
+          "$(uv python find 3.9)" -m venv /tmp/server
           /tmp/server/bin/pip install dist/*.whl
           /tmp/server/bin/aws-fortiweb --help
           /tmp/server/bin/python -m aws_fortiweb --help > /dev/null
