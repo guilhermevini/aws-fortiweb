@@ -10,12 +10,13 @@ Examples:
 
 import argparse
 import ipaddress
+import os
 import sys
 import urllib.request
 from pathlib import Path
 
 import boto3
-from botocore.exceptions import BotoCoreError, ClientError
+from botocore.exceptions import BotoCoreError, ClientError, NoRegionError
 
 FORTIWEB_URLS = {
     4: 'https://www.fortiweb-cloud.com/ips-v4',
@@ -84,7 +85,7 @@ def sync_ip_set(client, name, scope, version, ips, dry_run):
                 Scope=scope,
                 IPAddressVersion=f'IPV{version}',
                 Addresses=ips,
-                Description='FortiWeb Cloud addresses (managed by aws-fortiweb)',
+                Description='FortiWeb Cloud addresses - managed by aws-fortiweb',
             )
             print(f"[IPv{version}] IP set '{name}' created.")
         return
@@ -92,7 +93,8 @@ def sync_ip_set(client, name, scope, version, ips, dry_run):
     for attempt in range(1, MAX_LOCK_RETRIES + 1):
         current = client.get_ip_set(Name=name, Scope=scope, Id=summary['Id'])
         ip_set = current['IPSet']
-        existing = set(ip_set['Addresses'])
+        # AWS returns IPv6 addresses in exploded form (e.g. 2406:da17:0467::), so normalize before comparing
+        existing = {str(ipaddress.ip_network(a, strict=False)) for a in ip_set['Addresses']}
         added = sorted(set(ips) - existing)
         removed = sorted(existing - set(ips))
 
@@ -137,8 +139,14 @@ def main():
 
     versions = [4, 6] if args.version == 'all' else [int(args.version)]
     names = {4: args.name_ipv4, 6: args.name_ipv6}
-    region = 'us-east-1' if args.scope == 'CLOUDFRONT' else args.region
-    client = boto3.client('wafv2', region_name=region)
+    # boto3 only reads AWS_DEFAULT_REGION, while the AWS CLI also honors AWS_REGION
+    region = 'us-east-1' if args.scope == 'CLOUDFRONT' else args.region or os.environ.get('AWS_REGION')
+    try:
+        client = boto3.client('wafv2', region_name=region)
+    except NoRegionError:
+        print('Error: no AWS region configured. Use --region, set AWS_REGION, or configure one in your profile.',
+              file=sys.stderr)
+        return 1
 
     failures = 0
     for version in versions:
